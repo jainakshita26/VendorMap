@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken')
 const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, location } = req.body;
-    // location from frontend = { coordinates: [lng, lat], address: "Indore, MP" }
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
@@ -21,19 +20,34 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       role,
       location: {
-        type: "Point",
+        type:        "Point",
         coordinates: location?.coordinates || [0, 0],
-        address: location?.address || ""
+        address:     location?.address || ""
       }
+    });
+
+    // ← generate token immediately after register
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    // ← set cookie just like login does
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure:   false,
+      sameSite: "lax",
+      maxAge:   24 * 60 * 60 * 1000,
     });
 
     res.status(201).json({
       message: "User registered successfully",
       user: {
-        _id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
+        _id:      newUser._id,
+        name:     newUser.name,
+        email:    newUser.email,
+        role:     newUser.role,
         location: newUser.location,
       }
     });

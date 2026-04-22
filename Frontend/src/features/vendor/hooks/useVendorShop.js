@@ -7,6 +7,8 @@ import {
   updateProduct,
   deleteProduct,
 } from "../../product/services/product.api";
+import { updateHours } from "../../shop/services/shop.api";
+import { toggleTemporaryClosed } from "../../shop/services/shop.api";
 import useAuth from "../../auth/hooks/useAuth";
 
 const useVendorShop = () => {
@@ -24,12 +26,10 @@ const useVendorShop = () => {
         const data = await getMyShop();
         setShop(data.shop);
 
-        // if shop exists fetch its products immediately
         const productsData = await getProductsByShop(data.shop._id);
-        setProducts(productsData); // plain array ✅
+        setProducts(productsData);
 
       } catch (err) {
-        // 404 means vendor has no shop yet — not a real error
         if (err?.response?.status === 404) {
           setShop(null);
         } else {
@@ -44,51 +44,128 @@ const useVendorShop = () => {
   }, [user]);
 
   // ── Create shop ───────────────────────────────────────────────
-  const handleCreateShop = async (shopData) => {
-    const data = await createShop(shopData);
-    setShop(data.shop);
-    setProducts([]);
-    return data;
+  // formData is built in CreateShopForm and passed here directly
+  const handleCreateShop = async (formData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await createShop(formData); // ← use service, not axiosInstance directly
+      setShop(data.shop);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to create shop");
+      throw err; // re-throw so form can catch it too
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Update shop ───────────────────────────────────────────────
+  // formData is built in EditShopForm and passed here directly
+  const handleUpdateShop = async (formData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await updateShop(formData); // ← use service
+      setShop(data.shop);
+      return data;
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to update shop");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Add product ───────────────────────────────────────────────
-  const handleAddProduct = async (productData) => {
-    const data = await addProduct(shop._id, productData);
-    setProducts((prev) => [...prev, data.product]);
-    return data;
+  // formData is built in AddProductForm and passed here directly
+  const handleAddProduct = async (formData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await addProduct(shop._id, formData); // ← passes FormData
+      setProducts((prev) => [...prev, data.product]);
+      return data;
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to add product");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Update product ────────────────────────────────────────────
-  const handleUpdateProduct = async (productId, productData) => {
-    const data = await updateProduct(productId, productData);
-    setProducts((prev) =>
-      prev.map((p) => (p._id === productId ? data.product : p))
-    );
-    return data;
+  const handleUpdateProduct = async (productId, formData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await updateProduct(productId, formData); // ← passes FormData
+      setProducts((prev) =>
+        prev.map((p) => (p._id === productId ? data.product : p))
+      );
+      return data;
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to update product");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Delete product ────────────────────────────────────────────
   const handleDeleteProduct = async (productId) => {
-    await deleteProduct(productId);
-    setProducts((prev) => prev.filter((p) => p._id !== productId));
+    try {
+      setLoading(true);
+      setError(null);
+      await deleteProduct(productId);
+      setProducts((prev) => prev.filter((p) => p._id !== productId));
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to delete product");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateShop = async (shopData) => {
-  const data = await updateShop(shopData);
-  setShop(data.shop); // ← update local state immediately
-  return data;
+  // add inside useVendorShop
+const handleUpdateHours = async (hours) => {
+  try {
+    setLoading(true);
+    const data = await updateHours(hours);
+    setShop(data.shop);
+    return data;
+  } catch (err) {
+    setError(err?.response?.data?.message || "Failed to update hours");
+    throw err;
+  } finally {
+    setLoading(false);
+  }
 };
 
+const handleToggleTemporaryClosed = async () => {
+  try {
+    setLoading(true);
+    const data = await toggleTemporaryClosed();
+    setShop(data.shop);
+    return data;
+  } catch (err) {
+    setError(err?.response?.data?.message || "Failed to update status");
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
   return {
-     shop,
-  products,
-  loading,
-  error,
-  handleCreateShop,
-  handleUpdateShop,  
-  handleAddProduct,
-  handleUpdateProduct,
-  handleDeleteProduct,
+    shop,
+    products,
+    loading,
+    error,
+    handleCreateShop,
+    handleUpdateShop,
+    handleAddProduct,
+    handleUpdateProduct,
+    handleDeleteProduct,
+    handleUpdateHours,
+    handleToggleTemporaryClosed
   };
 };
 

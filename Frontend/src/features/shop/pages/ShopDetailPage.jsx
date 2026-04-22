@@ -1,10 +1,12 @@
 // src/features/shop/pages/ShopDetailPage.jsx
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import useShopDetail from "../hooks/useShopDetail";
 import ProductCard from "../components/ProductCard";
+import ReviewSection from "../components/ReviewSection";
+import StarRating from "../components/StarRating";
+import useFavourites from "../hooks/useFavourites";
+import useAuth from "../../auth/hooks/useAuth";
 
-// ── Skeleton ───────────────────────────────────────────────────
 const ProductSkeleton = () => (
   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
     <div className="w-full h-40 bg-gray-200" />
@@ -16,22 +18,19 @@ const ProductSkeleton = () => (
   </div>
 );
 
-// ── Main Page ──────────────────────────────────────────────────
 const ShopDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { shop, products, loading, error } = useShopDetail(id);
+  const { handleToggle, isFavourite } = useFavourites();
+  const { isAuthenticated, isCustomer } = useAuth();
 
-  // ── Error ────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 text-sm mb-4">{error}</p>
-          <button
-            onClick={() => navigate("/shops")}
-            className="text-blue-600 text-sm hover:underline"
-          >
+          <button onClick={() => navigate("/shops")} className="text-blue-600 text-sm hover:underline">
             ← Back to shops
           </button>
         </div>
@@ -45,27 +44,32 @@ const ShopDetailPage = () => {
       {/* Shop Header */}
       <div className="bg-white border-b border-gray-100">
 
-        {/* Shop Banner Image */}
-        <div className="w-full h-56 bg-gray-100 overflow-hidden">
+        {/* Banner image */}
+        <div className="w-full h-56 bg-gray-100 overflow-hidden relative">
           {loading ? (
             <div className="w-full h-full bg-gray-200 animate-pulse" />
           ) : shop?.shopImage ? (
-            <img
-              src={shop.shopImage}
-              alt={shop.shopName}
-              className="w-full h-full object-cover"
-            />
+            <img src={shop.shopImage} alt={shop.shopName} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-blue-50">
               <span className="text-6xl">🏪</span>
             </div>
           )}
+
+          {/* ── Heart button on banner ── */}
+          {!loading && isAuthenticated && isCustomer && (
+            <button
+              onClick={() => handleToggle(id)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:scale-110 transition-transform"
+            >
+              <span className={`text-lg ${isFavourite(id) ? "text-red-500" : "text-gray-300"}`}>
+                ♥
+              </span>
+            </button>
+          )}
         </div>
 
-        {/* Shop Info */}
         <div className="max-w-6xl mx-auto px-6 py-5">
-
-          {/* Back button */}
           <button
             onClick={() => navigate("/shops")}
             className="text-sm text-blue-600 hover:underline mb-3 flex items-center gap-1"
@@ -82,24 +86,50 @@ const ShopDetailPage = () => {
           ) : (
             <div className="space-y-2">
 
-              {/* Name + Category */}
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-800">
-                  {shop?.shopName}
-                </h1>
-                {shop?.category && (
-                  <span className="text-xs bg-blue-50 text-blue-600 font-medium px-2 py-1 rounded-full">
-                    {shop.category}
-                  </span>
+              {/* Name + category + favourite button */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-800">{shop?.shopName}</h1>
+                  {shop?.category && (
+                    <span className="text-xs bg-blue-50 text-blue-600 font-medium px-2 py-1 rounded-full">
+                      {shop.category}
+                    </span>
+                  )}
+                </div>
+
+                {/* Save button next to shop name — text version */}
+                {isAuthenticated && isCustomer && (
+                  <button
+                    onClick={() => handleToggle(id)}
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${
+                      isFavourite(id)
+                        ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:border-red-300 hover:text-red-400"
+                    }`}
+                  >
+                    <span>{isFavourite(id) ? "♥" : "♡"}</span>
+                    <span>{isFavourite(id) ? "Saved" : "Save Shop"}</span>
+                  </button>
                 )}
               </div>
 
-              {/* Description */}
+              {/* Rating summary */}
+              {shop?.reviewCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <StarRating value={Math.round(shop.averageRating)} readonly size="sm" />
+                  <span className="text-sm font-semibold text-gray-700">
+                    {shop.averageRating}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    ({shop.reviewCount} {shop.reviewCount === 1 ? "review" : "reviews"})
+                  </span>
+                </div>
+              )}
+
               {shop?.description && (
                 <p className="text-sm text-gray-500">{shop.description}</p>
               )}
 
-              {/* Meta */}
               <div className="flex items-center gap-4 text-xs text-gray-400 pt-1">
                 {shop?.location?.address && (
                   <span className="flex items-center gap-1">
@@ -110,7 +140,6 @@ const ShopDetailPage = () => {
                   <span>👤</span>{shop?.owner?.name}
                 </span>
               </div>
-
             </div>
           )}
         </div>
@@ -118,33 +147,22 @@ const ShopDetailPage = () => {
 
       {/* Products Section */}
       <div className="max-w-6xl mx-auto px-6 py-8">
-        <h2 className="text-lg font-semibold text-gray-800 mb-5">
-          Products
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-5">Products</h2>
 
-        {/* Loading skeletons */}
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[...Array(4)].map((_, i) => (
-              <ProductSkeleton key={i} />
-            ))}
+            {[...Array(4)].map((_, i) => <ProductSkeleton key={i} />)}
           </div>
         )}
 
-        {/* Empty products */}
         {!loading && products.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <span className="text-4xl mb-3">📦</span>
-            <p className="text-gray-500 text-sm font-medium">
-              No products yet
-            </p>
-            <p className="text-gray-400 text-xs mt-1">
-              This shop hasn't added any products
-            </p>
+            <p className="text-gray-500 text-sm font-medium">No products yet</p>
+            <p className="text-gray-400 text-xs mt-1">This shop hasn't added any products</p>
           </div>
         )}
 
-        {/* Products grid */}
         {!loading && products.length > 0 && (
           <>
             <p className="text-sm text-gray-400 mb-4">
@@ -157,8 +175,18 @@ const ShopDetailPage = () => {
             </div>
           </>
         )}
-
       </div>
+
+      {/* Reviews Section */}
+      {!loading && (
+        <div className="border-t border-gray-100">
+          <ReviewSection
+            shopId={id}
+            shopOwnerId={shop?.owner?._id}
+          />
+        </div>
+      )}
+
     </div>
   );
 };

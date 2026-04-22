@@ -1,6 +1,6 @@
 // src/features/auth/context/AuthContext.jsx
 import { createContext, useState, useEffect, useCallback } from "react";
-import { getMe, loginUser, registerUser, logoutUser } from "../auth/services/auth.api";
+import { getMe, loginUser, registerUser, logoutUser } from "./services/auth.api";
 
 export const AuthContext = createContext(null);
 

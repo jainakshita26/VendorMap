@@ -1,16 +1,25 @@
-// src/features/shop/components/ShopCard.jsx
 import { useNavigate } from "react-router-dom";
+import useAuth from "../../auth/hooks/useAuth";
+import { getShopStatus } from "../../../core/utils/shopHours"; // ← new
 
-const ShopCard = ({ shop }) => {
+const ShopCard = ({ shop, isFavourite = false, onToggleFavourite }) => {
   const navigate = useNavigate();
+  const { isAuthenticated, isCustomer } = useAuth();
+
+  const handleHeartClick = (e) => {
+    e.stopPropagation();
+    if (onToggleFavourite) onToggleFavourite(shop._id);
+  };
+
+  // ← new
+const { isOpen, label } = getShopStatus(shop.hours, shop.temporarilyClosed);
 
   return (
     <div
       onClick={() => navigate(`/shops/${shop._id}`)}
       className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden border border-gray-100 group"
     >
-      {/* Image */}
-      <div className="w-full h-48 bg-gray-100 overflow-hidden">
+      <div className="w-full h-48 bg-gray-100 overflow-hidden relative">
         {shop.shopImage ? (
           <img
             src={shop.shopImage}
@@ -22,12 +31,29 @@ const ShopCard = ({ shop }) => {
             <span className="text-4xl">🏪</span>
           </div>
         )}
+
+        {/* ← Open/Closed badge */}
+        {shop.hours?.length > 0 && (
+          <div className={`absolute top-3 left-3 text-xs font-semibold px-2 py-1 rounded-full ${
+            isOpen
+              ? "bg-green-500 text-white"
+              : "bg-gray-800 text-white opacity-80"
+          }`}>
+            {isOpen ? "● Open" : "● Closed"}
+          </div>
+        )}
+
+        {isAuthenticated && isCustomer && (
+          <button
+            onClick={handleHeartClick}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center hover:scale-110 transition-transform"
+          >
+            <span className={`text-base ${isFavourite ? "text-red-500" : "text-gray-300"}`}>♥</span>
+          </button>
+        )}
       </div>
 
-      {/* Info */}
       <div className="p-4 space-y-2">
-
-        {/* Name + category */}
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold text-gray-800 leading-tight group-hover:text-blue-600 transition-colors">
             {shop.shopName}
@@ -39,54 +65,45 @@ const ShopCard = ({ shop }) => {
           )}
         </div>
 
-        {/* Description */}
         {shop.description && (
-          <p className="text-sm text-gray-500 line-clamp-2">
-            {shop.description}
-          </p>
+          <p className="text-sm text-gray-500 line-clamp-2">{shop.description}</p>
         )}
 
-        {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-          {shop.location?.address && (
-            <div className="flex items-center gap-1 text-xs text-gray-400">
-              <span>📍</span>
-              <span>{shop.location.address}</span>
-            </div>
-          )}
-          {shop.views > 0 && (
-            <div className="flex items-center gap-1 text-xs text-gray-400 ml-auto">
-              <span>👁️</span>
-              <span>{shop.views}</span>
-            </div>
-          )}
-        </div>
+          <div className="flex flex-col gap-0.5">
+            {shop.location?.address && (
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <span>📍</span>
+                <span>{shop.location.address}</span>
+              </div>
+            )}
+            {/* ← Hours label */}
+            {shop.hours?.length > 0 && label && (
+              <span className={`text-xs ${isOpen ? "text-green-600" : "text-gray-400"}`}>
+                {label}
+              </span>
+            )}
+          </div>
 
+          <div className="flex items-center gap-3 ml-auto">
+            {shop.averageRating > 0 && (
+              <div className="flex items-center gap-1 text-xs font-medium text-yellow-600">
+                <span>★</span>
+                <span>{shop.averageRating}</span>
+                <span className="text-gray-400 font-normal">({shop.reviewCount})</span>
+              </div>
+            )}
+            {shop.views > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <span>👁️</span>
+                <span>{shop.views}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default ShopCard;
-
-
-// ### What's working now
-
-// | Feature | How |
-// |---|---|
-// | Search by name | Filters instantly as you type |
-// | Search by category | Same search box |
-// | Search by location | Same search box |
-// | Filter by category | Pills — click to filter |
-// | Sort A→Z / Newest | Dropdown |
-// | Clear search | ✕ button appears when searching |
-// | Empty search state | Different message + clear button |
-// | View count on card | Shows if views > 0 |
-
-// ### Key design decision — no extra API calls
-// ```
-// All 3 features (search, filter, sort) work on
-// already-fetched shops array using useMemo
-// → instant response
-// → no loading spinner on filter
-// → works offline too

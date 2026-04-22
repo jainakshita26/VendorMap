@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import useAuth from "../../features/auth/hooks/useAuth";
 
 const Navbar = () => {
-  const { user, isVendor, isAuthenticated, logout } = useAuth();
+  const { user, isVendor, isCustomer, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,6 +48,8 @@ const Navbar = () => {
           >
             Shops
           </span>
+
+          {/* Vendor — Dashboard link */}
           {isAuthenticated && isVendor && (
             <span
               onClick={() => navigate("/vendor/dashboard")}
@@ -57,7 +59,17 @@ const Navbar = () => {
             </span>
           )}
 
-          {/* ── Search bar — desktop center ──────────────── */}
+          {/* Customer — Favourites link */}
+          {isAuthenticated && isCustomer && (
+            <span
+              onClick={() => navigate("/favourites")}
+              className={`text-sm cursor-pointer transition ${isActive("/favourites")}`}
+            >
+              ♥ Favourites
+            </span>
+          )}
+
+          {/* ── Search bar ──────────────────────────────── */}
           <button
             onClick={() => navigate("/search")}
             className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-400 transition w-44"
@@ -113,15 +125,12 @@ const Navbar = () => {
 
         {/* ── Mobile — Search icon + Hamburger ────────────── */}
         <div className="md:hidden flex items-center gap-3">
-          {/* Search icon on mobile */}
           <button
             onClick={() => navigate("/search")}
             className="text-gray-500 hover:text-blue-600 transition text-xl"
           >
             🔍
           </button>
-
-          {/* Hamburger */}
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
             className="flex flex-col gap-1.5 p-1 focus:outline-none"
@@ -138,7 +147,7 @@ const Navbar = () => {
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 px-6 py-4 space-y-1">
 
-          {/* Search bar — full width on mobile */}
+          {/* Search bar */}
           <button
             onClick={() => { navigate("/search"); setMenuOpen(false); }}
             className="w-full flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-400 mb-3"
@@ -147,7 +156,7 @@ const Navbar = () => {
             <span>Search products...</span>
           </button>
 
-          {/* Nav links */}
+          {/* Home */}
           <button
             onClick={() => { navigate("/"); setMenuOpen(false); }}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition
@@ -156,6 +165,7 @@ const Navbar = () => {
             Home
           </button>
 
+          {/* Shops */}
           <button
             onClick={() => { navigate("/shops"); setMenuOpen(false); }}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition
@@ -164,6 +174,7 @@ const Navbar = () => {
             Shops
           </button>
 
+          {/* Vendor — Dashboard */}
           {isAuthenticated && isVendor && (
             <button
               onClick={() => { navigate("/vendor/dashboard"); setMenuOpen(false); }}
@@ -174,7 +185,18 @@ const Navbar = () => {
             </button>
           )}
 
-          {/* Divider */}
+          {/* Customer — Favourites */}
+          {isAuthenticated && isCustomer && (
+            <button
+              onClick={() => { navigate("/favourites"); setMenuOpen(false); }}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition
+                ${location.pathname === "/favourites" ? "bg-blue-50 text-blue-600 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
+            >
+              ♥ Favourites
+            </button>
+          )}
+
+          {/* Divider + Auth */}
           <div className="pt-2 border-t border-gray-100 mt-2">
             {!isAuthenticated ? (
               <div className="space-y-2 pt-2">
@@ -224,23 +246,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
-
-// ### What changed
-
-// | Before | After |
-// |---|---|
-// | Search button hidden on mobile with `hidden md:flex` | 🔍 icon always visible on mobile next to hamburger |
-// | Search in wrong place in mobile menu | Full width search bar at top of mobile menu |
-// | Search was outside center links on desktop | Search bar sits inside center links group |
-
-// ---
-
-// ### Desktop layout now
-// ```
-// [🏪 VendorMap]    [Home  Shops  Dashboard  🔍 Search...]    [Avatar  Logout]
-// ```
-
-// ### Mobile layout now
-// ```
-// [🏪 VendorMap]                              [🔍  ☰]

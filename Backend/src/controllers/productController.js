@@ -1,109 +1,86 @@
+// src/controllers/productController.js
 const productModel = require("../models/product.model");
+require("../models/shop.model");  // ← add this
+require("../models/user.model");
 
+// POST /api/add/:shopId/products
 const addProduct = async (req, res) => {
   try {
+    console.log("addProduct hit");
+    console.log("body:", req.body);
+    console.log("file:", req.file);
+    console.log("shopId:", req.params.shopId);
 
-    const shopId = req.params.shopId;
-
-    const { name, price, description, image } = req.body;
+    const { name, price, description, unit, discountPrice } = req.body;
+    const image = req.file ? req.file.path : "";
 
     const product = await productModel.create({
       name,
       price,
+      discountPrice: discountPrice && Number(discountPrice) > 0 ? Number(discountPrice) : null,
+      unit:          unit || "piece",
       description,
       image,
-      shop: shopId
+      shop: req.params.shopId,
     });
 
-    res.status(201).json({
-      message: "Product added successfully",
-      product
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    res.status(201).json({ success: true, product });
+  } catch (err) {
+    console.log("addProduct ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
-
-
-const getProductsByShop = async (req, res) => {
-
-  try {
-
-    const shopId = req.params.shopId;
-
-    const products = await productModel.find({ shop: shopId });
-
-    res.json(products);
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
-  }
-
-};
-
 
 const updateProduct = async (req, res) => {
-
   try {
+    const { name, price, description, unit, discountPrice } = req.body;
 
-    const productId = req.params.productId;
+    const updates = {
+      name,
+      price,
+      discountPrice: discountPrice && Number(discountPrice) > 0 ? Number(discountPrice) : null,
+      unit:          unit || "piece",
+      description,
+    };
+
+    if (req.file) updates.image = req.file.path;
 
     const product = await productModel.findByIdAndUpdate(
-      productId,
-      req.body,
+      req.params.productId,
+      updates,
       { new: true }
     );
 
-    res.json({
-      message: "Product updated",
-      product
-    });
-
+    res.json({ message: "Product updated", product });
   } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    console.log("updateProduct ERROR:", error);
+    res.status(500).json({ message: "Server error" });
   }
-
 };
 
-
-
-const deleteProduct = async (req, res) => {
-
+// GET /api/shops/:shopId/products
+const getProductsByShop = async (req, res) => {
   try {
-
-    const productId = req.params.productId;
-
-    await productModel.findByIdAndDelete(productId);
-
-    res.json({
-      message: "Product deleted"
-    });
-
+    const products = await productModel.find({ shop: req.params.shopId });
+    res.json(products);
   } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    res.status(500).json({ message: "Server error" });
   }
-
 };
 
 
-// Search products by name + optional location
+
+// DELETE /api/products/:productId
+const deleteProduct = async (req, res) => {
+  try {
+    await productModel.findByIdAndDelete(req.params.productId);
+    res.json({ message: "Product deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// GET /api/products/search?q=&lat=&lng=
 const searchProducts = async (req, res) => {
   try {
     const { q, lat, lng, radius = 50 } = req.query;
@@ -116,7 +93,7 @@ const searchProducts = async (req, res) => {
       .find({ name: { $regex: q, $options: "i" } })
       .populate({
         path: "shop",
-        populate: { path: "owner", select: "name email" }
+        populate: { path: "owner", select: "name email" },
       });
 
     let results = products;
@@ -131,9 +108,7 @@ const searchProducts = async (req, res) => {
         if (!shop) return false;
 
         const coords = shop?.location?.coordinates;
-        if (!coords || (coords[0] === 0 && coords[1] === 0)) {
-          return true; // include unknown location
-        }
+        if (!coords || (coords[0] === 0 && coords[1] === 0)) return true;
 
         const [shopLng, shopLat] = coords;
         const R = 6371;
@@ -149,11 +124,7 @@ const searchProducts = async (req, res) => {
         return distance <= maxDist;
       });
 
-      /*
-        ✅ Key fix:
-        If nearby search returns nothing → fall back to ALL results
-        This handles GPS inaccuracy and development testing
-      */
+      // fallback to all results if nothing nearby
       results = nearby.length > 0 ? nearby : products;
     }
 
@@ -182,7 +153,6 @@ const searchProducts = async (req, res) => {
     }
 
     res.json({ results, total: results.length });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
@@ -194,6 +164,5 @@ module.exports = {
   getProductsByShop,
   updateProduct,
   deleteProduct,
-  searchProducts, // ✅ add this
+  searchProducts,
 };
-

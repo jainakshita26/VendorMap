@@ -1,6 +1,7 @@
 // src/features/shop/pages/ShopListPage.jsx
 import useShops from "../hooks/useShops";
 import ShopCard from "../components/ShopCard";
+import useFavourites from "../hooks/useFavourites";
 
 const ShopCardSkeleton = () => (
   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
@@ -15,14 +16,13 @@ const ShopCardSkeleton = () => (
 );
 
 const ShopListPage = () => {
-  // ✅ added usedRadius here
   const {
     shops,
     totalShops,
     loading,
     error,
     isNearby,
-    usedRadius,   // ✅ this was missing
+    usedRadius,
     search,
     setSearch,
     category,
@@ -31,6 +31,8 @@ const ShopListPage = () => {
     setSortBy,
     categories,
   } = useShops();
+
+  const { handleToggle, isFavourite } = useFavourites(); // ✅ already imported
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -183,7 +185,12 @@ const ShopListPage = () => {
         {!loading && !error && shops.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {shops.map((shop) => (
-              <ShopCard key={shop._id} shop={shop} />
+              <ShopCard
+                key={shop._id}
+                shop={shop}
+                isFavourite={isFavourite(shop._id)}       
+                onToggleFavourite={handleToggle}           
+              />
             ))}
           </div>
         )}

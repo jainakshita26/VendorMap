@@ -1,35 +1,20 @@
 // src/features/vendor/components/EditShopForm.jsx
-import { useState } from "react";
+import { useState, useRef } from "react";
 
-/*
-  EditShopForm:
-  Shows current shop image + description
-  Vendor can update either or both
-  
-  Props:
-  shop     → current shop data (to pre-fill form)
-  onSubmit → handler from useVendorShop
-  onClose  → close the edit form
-*/
 const EditShopForm = ({ shop, onSubmit, onClose }) => {
-  /*
-    Pre-fill form with current shop data
-    Vendor sees their current values and can change them
-  */
-  const [formData, setFormData] = useState({
-    shopImage:   shop.shopImage   || "",
-    description: shop.description || "",
-  });
+  const [description, setDescription] = useState(shop.description || "");
+  const [imageFile, setImageFile]     = useState(null);
+  const [preview, setPreview]         = useState(shop.shopImage || null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState(null);
+  const [success, setSuccess]         = useState(false);
+  const fileInputRef                  = useRef();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState(null);
-  const [success, setSuccess] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    setPreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
@@ -38,9 +23,12 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
     setLoading(true);
 
     try {
+      const formData = new FormData();
+      formData.append("description", description);
+      if (imageFile) formData.append("shopImage", imageFile);
+
       await onSubmit(formData);
       setSuccess(true);
-      // close form after 1.5 seconds
       setTimeout(() => onClose(), 1500);
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to update shop.");
@@ -54,25 +42,17 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold text-gray-800">
-          Edit Shop Profile
-        </h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl transition"
-        >
+        <h3 className="text-base font-semibold text-gray-800">Edit Shop Profile</h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl transition">
           ✕
         </button>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">
           {error}
         </div>
       )}
-
-      {/* Success */}
       {success && (
         <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-600 text-sm rounded-lg">
           ✓ Shop updated successfully
@@ -81,35 +61,47 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* Shop Image URL */}
+        {/* Image upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Shop Image URL
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Shop Image
           </label>
-          <input
-            type="url"
-            name="shopImage"
-            value={formData.shopImage}
-            onChange={handleChange}
-            placeholder="https://example.com/image.jpg"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-          />
 
-          {/*
-            Live image preview:
-            As soon as vendor pastes a URL → show preview
-            If URL is broken → hide image silently (onError)
-          */}
-          {formData.shopImage && (
-            <div className="mt-2 w-full h-32 rounded-lg overflow-hidden border border-gray-200">
-              <img
-                src={formData.shopImage}
-                alt="Preview"
-                className="w-full h-full object-cover"
-                onError={(e) => (e.target.style.display = "none")}
-              />
+          {/* Clickable preview box */}
+          <div
+            onClick={() => fileInputRef.current.click()}
+            className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-400 transition flex items-center justify-center bg-gray-50"
+          >
+            {preview ? (
+              <img src={preview} alt="shop" className="w-full h-full object-cover" />
+            ) : (
+              <div className="text-center text-gray-400">
+                <div className="text-3xl mb-1">🏪</div>
+                <p className="text-xs">Click to upload image</p>
+              </div>
+            )}
+          </div>
+
+          {imageFile && (
+            <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+              <span className="truncate max-w-xs">{imageFile.name}</span>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current.click()}
+                className="text-blue-600 underline ml-2 shrink-0"
+              >
+                Change
+              </button>
             </div>
           )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="hidden"
+          />
         </div>
 
         {/* Description */}
@@ -118,31 +110,27 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
             Description
           </label>
           <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Tell customers what your shop is about..."
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
           />
-          {/* character count */}
           <p className="text-xs text-gray-400 mt-1 text-right">
-            {formData.description.length} characters
+            {description.length} characters
           </p>
         </div>
 
         {/* Buttons */}
         <div className="flex gap-2 pt-1">
           <button
-            type="submit"
-            disabled={loading}
+            type="submit" disabled={loading}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2.5 rounded-lg text-sm transition"
           >
             {loading ? "Saving..." : "Save Changes"}
           </button>
           <button
-            type="button"
-            onClick={onClose}
+            type="button" onClick={onClose}
             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-lg text-sm transition"
           >
             Cancel

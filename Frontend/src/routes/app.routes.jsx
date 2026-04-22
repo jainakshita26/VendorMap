@@ -1,25 +1,26 @@
 // src/routes/AppRoutes.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "../core/components/ProtectedRoute";
-import GuestRoute     from "../core/components/GuestRoute";
+import GuestRoute from "../core/components/GuestRoute";
 
 // Pages
-import HomePage       from "../features/home/pages/HomePage";
-import LoginPage      from "../features/auth/pages/LoginPage";
-import RegisterPage   from "../features/auth/pages/RegisterPage";
-import ShopListPage   from "../features/shop/pages/ShopListPage";
+import HomePage from "../features/home/pages/HomePage";
+import LoginPage from "../features/auth/pages/LoginPage";
+import RegisterPage from "../features/auth/pages/RegisterPage";
+import ShopListPage from "../features/shop/pages/ShopListPage";
 import ShopDetailPage from "../features/shop/pages/ShopDetailPage";
 import VendorDashboard from "../features/vendor/pages/VendorDashboard";
-import NotFoundPage   from "../core/pages/NotFoundPage";
+import NotFoundPage from "../core/pages/NotFoundPage";
 import SearchPage from "../features/search/pages/SearchPage";
+import FavouritesPage from "../features/shop/pages/FavouritePage";
 
 const AppRoutes = () => {
   return (
     <Routes>
 
       {/* ── Public ─────────────────────────────────────────── */}
-      <Route path="/"          element={<HomePage />} />
-      <Route path="/shops"     element={<ShopListPage />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/shops" element={<ShopListPage />} />
       <Route path="/shops/:id" element={<ShopDetailPage />} />
       <Route path="/search" element={<SearchPage />} />
 
@@ -53,6 +54,15 @@ const AppRoutes = () => {
 
       {/* ── 404 ────────────────────────────────────────────── */}
       <Route path="*" element={<NotFoundPage />} />
+
+      <Route
+        path="/favourites"
+        element={
+          <ProtectedRoute>
+            <FavouritesPage />
+          </ProtectedRoute>
+        }
+      />
 
     </Routes>
   );

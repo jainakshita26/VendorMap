@@ -2,35 +2,28 @@ const shopModel = require("../models/shop.model");
 
 const shopOwnerMiddleware = async (req, res, next) => {
   try {
-
     const shopId = req.params.shopId;
-
-    const shop = await shopModel.findById(shopId);
+    const shop   = await shopModel.findById(shopId);
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
 
-    // check if logged in vendor owns this shop
+    // guard — old shops may not have owner field
+    if (!shop.owner) {
+      return res.status(403).json({ message: "Shop has no owner assigned" });
+    }
+
     if (shop.owner.toString() !== req.user.id) {
-      return res.status(403).json({
-        message: "You can only manage your own shop"
-      });
+      return res.status(403).json({ message: "You can only manage your own shop" });
     }
 
-    // attach shop to request (optional but useful)
     req.shop = shop;
-
     next();
 
   } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    console.log("shopOwnerMiddleware ERROR:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 

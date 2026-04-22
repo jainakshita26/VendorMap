@@ -1,6 +1,6 @@
 // src/features/vendor/components/CreateShopForm.jsx
-import { useState } from "react";
-import { getCurrentCoordinates, buildLocation } from "../../../core/utils/location";
+import { useState, useRef } from "react";
+import { getCurrentCoordinates, buildLocation, geocodeAddress } from "../../../core/utils/location";
 import useAuth from "../../auth/hooks/useAuth";
 
 const CATEGORIES = [
@@ -11,58 +11,73 @@ const CATEGORIES = [
 
 const CreateShopForm = ({ onSubmit }) => {
   const { user } = useAuth();
+  const fileInputRef = useRef();
 
   const [formData, setFormData] = useState({
     shopName: "",
-    location: user?.location?.address || "", // ✅ pre-fill from user profile
+    location: user?.location?.address || "",
     category: "",
-    shopImage: "",
     description: "",
   });
 
-  const [error, setError]     = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);   // actual file
+  const [preview, setPreview]     = useState(null);   // blob URL for preview
+  const [error, setError]         = useState(null);
+  const [loading, setLoading]     = useState(false);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError(null);
-  setLoading(true);
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    setPreview(URL.createObjectURL(file)); // instant preview, no upload yet
+  };
 
-  try {
-    let locationData = null;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
     try {
-      // Step 1 — GPS
-      const { coordinates } = await getCurrentCoordinates();
-      locationData = buildLocation(coordinates, formData.location);
+      let locationData = null;
 
-    } catch {
-      // Step 2 — Geocoding
-      const geocoded = await geocodeAddress(formData.location);
-
-      if (geocoded) {
-        locationData = buildLocation(geocoded.coordinates, formData.location);
-      } else {
-        // Step 3 — fallback to user's saved coordinates
-        locationData = buildLocation(
-          user?.location?.coordinates || [0, 0],
-          formData.location
-        );
+      try {
+        // Step 1 — GPS
+        const { coordinates } = await getCurrentCoordinates();
+        locationData = buildLocation(coordinates, formData.location);
+      } catch {
+        // Step 2 — Geocoding
+        const geocoded = await geocodeAddress(formData.location);
+        if (geocoded) {
+          locationData = buildLocation(geocoded.coordinates, formData.location);
+        } else {
+          // Step 3 — fallback
+          locationData = buildLocation(
+            user?.location?.coordinates || [0, 0],
+            formData.location
+          );
+        }
       }
+
+      // Build FormData instead of plain object
+      const data = new FormData();
+      data.append("shopName", formData.shopName);
+      data.append("category", formData.category);
+      data.append("description", formData.description);
+      data.append("location", JSON.stringify(locationData)); // location as JSON string
+      if (imageFile) data.append("shopImage", imageFile);   // only if file chosen
+
+      await onSubmit(data); // hook receives FormData directly
+
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to create shop.");
+    } finally {
+      setLoading(false);
     }
-
-    await onSubmit({ ...formData, location: locationData });
-
-  } catch (err) {
-    setError(err?.response?.data?.message || "Failed to create shop.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -119,31 +134,59 @@ const CreateShopForm = ({ onSubmit }) => {
             />
           </div>
 
+          {/* ---- Image upload (replaces URL input) ---- */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Shop Image URL{" "}
-              <span className="text-gray-400 font-normal">(optional)</span>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Shop Image
+              <span className="text-gray-400 font-normal ml-1">(optional)</span>
             </label>
-            <input
-              type="url" name="shopImage" value={formData.shopImage}
-              onChange={handleChange} placeholder="https://example.com/image.jpg"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-            />
-            {formData.shopImage && (
-              <div className="mt-2 w-full h-32 rounded-lg overflow-hidden border border-gray-200">
+
+            {/* Clickable preview box */}
+            <div
+              onClick={() => fileInputRef.current.click()}
+              className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-400 transition flex items-center justify-center bg-gray-50"
+            >
+              {preview ? (
                 <img
-                  src={formData.shopImage} alt="Shop preview"
+                  src={preview} alt="Shop preview"
                   className="w-full h-full object-cover"
-                  onError={(e) => { e.target.style.display = "none"; }}
                 />
+              ) : (
+                <div className="text-center text-gray-400">
+                  <div className="text-3xl mb-1">📷</div>
+                  <p className="text-xs">Click to upload image</p>
+                </div>
+              )}
+            </div>
+
+            {/* Show filename + change option after picking */}
+            {imageFile && (
+              <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                <span className="truncate max-w-xs">{imageFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current.click()}
+                  className="text-blue-600 underline ml-2 shrink-0"
+                >
+                  Change
+                </button>
               </div>
             )}
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description{" "}
-              <span className="text-gray-400 font-normal">(optional)</span>
+              Description
+              <span className="text-gray-400 font-normal ml-1">(optional)</span>
             </label>
             <textarea
               name="description" value={formData.description}

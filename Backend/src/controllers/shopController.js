@@ -1,35 +1,36 @@
 const shopModel = require("../models/shop.model");
 
 
+
 // Create Shop
-const createShop = async (req, res) => {
-  try {
-    const { shopName, location, category, shopImage, description } = req.body;
-    // location from frontend = { coordinates: [lng, lat], address: "Indore, MP" }
+// const createShop = async (req, res) => {
+//   try {
+//     const { shopName, location, category, shopImage, description } = req.body;
+//     // location from frontend = { coordinates: [lng, lat], address: "Indore, MP" }
 
-    const newShop = await shopModel.create({
-      shopName,
-      owner: req.user.id,
-      location: {
-        type: "Point",
-        coordinates: location?.coordinates || [0, 0],
-        address: location?.address || ""
-      },
-      category,
-      shopImage,
-      description
-    });
+//     const newShop = await shopModel.create({
+//       shopName,
+//       owner: req.user.id,
+//       location: {
+//         type: "Point",
+//         coordinates: location?.coordinates || [0, 0],
+//         address: location?.address || ""
+//       },
+//       category,
+//       shopImage,
+//       description
+//     });
 
-    res.status(201).json({
-      message: "Shop created successfully",
-      shop: newShop
-    });
+//     res.status(201).json({
+//       message: "Shop created successfully",
+//       shop: newShop
+//     });
 
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 
 // Get All Shops
@@ -200,46 +201,110 @@ const getNearbyShops = async (req, res) => {
   - We can add those later if needed
   - Keeping it simple for now
 */
-const updateShop = async (req, res) => {
+
+
+// POST /api/shops/create
+
+
+// POST /api/shops/create
+const createShop = async (req, res) => {
   try {
-    const { shopImage, description } = req.body;
+    console.log("createShop hit");
+    console.log("req.user:", req.user);
+    console.log("body:", req.body);
 
-    /*
-      findOneAndUpdate:
-      { owner: req.user.id } → find shop owned by THIS vendor
-      This prevents vendors from editing OTHER vendors' shops
-      
-      { new: true } → return updated document (not old one)
-    */
-    const shop = await shopModel.findOneAndUpdate(
-      { owner: req.user.id },
-      { shopImage, description },
-      { new: true }
-    ).populate("owner", "name email");
+    const { shopName, category, description } = req.body;
+    const shopImage = req.file ? req.file.path : "";
+    const location  = req.body.location ? JSON.parse(req.body.location) : undefined;
 
-    if (!shop) {
-      return res.status(404).json({ message: "Shop not found" });
-    }
+    console.log("owner being set to:", req.user._id || req.user.id);
 
-    res.status(200).json({
-      message: "Shop updated successfully",
-      shop
+    const shop = await shopModel.create({
+      shopName,
+      category,
+      description,
+      shopImage,
+      location,
+      owner: req.user._id || req.user.id, // ← try both
     });
 
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server error" });
+    console.log("shop created:", shop);
+    res.status(201).json({ success: true, shop });
+  } catch (err) {
+    console.log("createShop ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
+
+// PUT /api/shops/update
+const updateShop = async (req, res) => {
+  try {
+    const updates = {};
+
+    if (req.body.description) updates.description = req.body.description;
+
+    // only update image if a new file was uploaded
+    if (req.file) updates.shopImage = req.file.path;
+
+    const shop = await shopModel.findOneAndUpdate(
+      { owner: req.user._id },
+      updates,
+      { new: true }
+    );
+
+    res.json({ success: true, shop });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// PUT /api/shops/toggle-closed
+const toggleTemporaryClosed = async (req, res) => {
+  try {
+    const shop = await shopModel.findOne({ owner: req.user.id });
+
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    shop.temporarilyClosed = !shop.temporarilyClosed;
+    await shop.save();
+
+    res.json({ success: true, temporarilyClosed: shop.temporarilyClosed, shop });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// PUT /api/shops/hours
+const updateHours = async (req, res) => {
+  try {
+    const { hours } = req.body;
+
+    const shop = await shopModel.findOneAndUpdate(
+      { owner: req.user.id },
+      { hours },
+      { new: true }
+    );
+
+    res.json({ success: true, shop });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 
 // add to exports
 module.exports = {
   createShop,
+  updateShop,
   getAllShops,
   getShopById,
   getMyShop,
   getNearbyShops,
-  updateShop  
+  updateShop ,
+  toggleTemporaryClosed ,
+  updateHours
 };
 
 

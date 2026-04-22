@@ -33,7 +33,8 @@ const UserSchema = new mongoose.Schema({
   address: {
     type: String  // human readable — "Indore, MP"
   }
-}
+},
+favourites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }]
 }, { timestamps: true });
 
 // Export model

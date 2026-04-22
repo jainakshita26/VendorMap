@@ -8,15 +8,19 @@ export const getProductsByShop = async (shopId) => {
 };
 
 // POST /add/:shopId/products — vendor only
-export const addProduct = async (shopId, productData) => {
-  const response = await axiosInstance.post(`/add/${shopId}/products`, productData);
-  return response.data;
+export const addProduct = async (shopId, formData) => {
+  const res = await axiosInstance.post(`/add/${shopId}/products`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
 };
 
 // PUT /products/:productId — vendor only
-export const updateProduct = async (productId, productData) => {
-  const response = await axiosInstance.put(`/products/${productId}`, productData);
-  return response.data;
+export const updateProduct = async (productId, formData) => {
+  const res = await axiosInstance.put(`/products/${productId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
 };
 
 // DELETE /products/:productId — vendor only
