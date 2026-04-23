@@ -3,40 +3,28 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { getAllShops, getNearbyShops } from "../services/shop.api";
 
 const useShops = () => {
-  const [shops, setShops]           = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
-  const [isNearby, setIsNearby]     = useState(false);
+  const [nearbyShops, setNearbyShops] = useState([]); // ← nearby only
+  const [allShops, setAllShops]       = useState([]); // ← all shops for search
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [isNearby, setIsNearby]       = useState(false);
+  const [usedRadius, setUsedRadius]   = useState(null);
 
-  /*
-    usedRadius tells us WHICH radius actually found shops:
-    5  → "Shops within 5km"
-    20 → "Shops within 20km"
-    50 → "Shops within 50km"
-    null → "All Shops" (either denied or none found nearby)
-  */
-  const [usedRadius, setUsedRadius] = useState(null);
+  const [search, setSearch]     = useState("");
+  const [category, setCategory] = useState("All");
+  const [sortBy, setSortBy]     = useState("default");
 
-  const [search, setSearch]         = useState("");
-  const [category, setCategory]     = useState("All");
-  const [sortBy, setSortBy]         = useState("default");
-
-  /*
-    useRef prevents the effect from running twice.
-    In React StrictMode, effects run twice in development.
-    hasFetched.current = true after first run → skips second run.
-  */
   const hasFetched = useRef(false);
 
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
 
-    // fallback — just get all shops
     const fetchAllShops = async () => {
       try {
         const data = await getAllShops();
-        setShops(data.shops);
+        setAllShops(data.shops);   // ← always store all shops
+        setNearbyShops(data.shops);
         setIsNearby(false);
         setUsedRadius(null);
       } catch (err) {
@@ -46,64 +34,44 @@ const useShops = () => {
       }
     };
 
-    // main — get nearby shops with smart radius
     const fetchNearbyShops = async (lat, lng) => {
       try {
-        /*
-          getNearbyShops sends lat + lng to backend
-          Backend tries 5km → 20km → 50km → all
-          Returns { shops, usedRadius }
-        */
-        const data = await getNearbyShops(lat, lng);
-        setShops(data.shops);
-        setUsedRadius(data.usedRadius);
+        const [nearbyData, allData] = await Promise.all([
+          getNearbyShops(lat, lng), // ← fetch nearby
+          getAllShops(),             // ← fetch all at same time
+        ]);
 
-        /*
-          isNearby = true only when actual radius was used
-          isNearby = false when showing all shops (usedRadius = null)
-        */
-        setIsNearby(data.usedRadius !== null);
+        setNearbyShops(nearbyData.shops);
+        setAllShops(allData.shops);  // ← store all for search
+        setUsedRadius(nearbyData.usedRadius);
+        setIsNearby(nearbyData.usedRadius !== null);
       } catch {
-        // nearby API failed → fallback to all shops
         await fetchAllShops();
       } finally {
         setLoading(false);
       }
     };
 
-    /*
-      navigator.geolocation → browser's built-in GPS API
-      getCurrentPosition → asks user for location permission
-      
-      Two callbacks:
-      1. Success (pos) → user allowed, we have coordinates
-      2. Error ()      → user denied, use fallback
-      
-      timeout: 5000 → if GPS takes more than 5 seconds → treat as denied
-    */
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          fetchNearbyShops(
-            pos.coords.latitude,
-            pos.coords.longitude
-          );
-        },
-        () => fetchAllShops(), // denied
+        (pos) => fetchNearbyShops(pos.coords.latitude, pos.coords.longitude),
+        () => fetchAllShops(),
         { timeout: 5000 }
       );
     } else {
-      // browser doesn't support geolocation
       fetchAllShops();
     }
-  }, []); // empty array → runs only once on mount
+  }, []);
 
-  /*
-    useMemo → only recalculates when shops/search/category/sortBy changes
-    Without useMemo → recalculates on every single render → slow
-  */
   const filteredShops = useMemo(() => {
-    let result = [...shops];
+    /*
+      Key logic:
+      - If search is active → search across ALL shops (ignore radius)
+      - If no search → show nearby shops only
+    */
+    const base = search.trim() ? allShops : nearbyShops;
+
+    let result = [...base];
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -126,20 +94,22 @@ const useShops = () => {
     }
 
     return result;
-  }, [shops, search, category, sortBy]);
+  }, [nearbyShops, allShops, search, category, sortBy]);
 
+  // categories from all shops so filters always show everything
   const categories = useMemo(() => {
-    const cats = [...new Set(shops.map((s) => s.category).filter(Boolean))];
+    const cats = [...new Set(allShops.map((s) => s.category).filter(Boolean))];
     return ["All", ...cats];
-  }, [shops]);
+  }, [allShops]);
 
   return {
     shops: filteredShops,
-    totalShops: shops.length,
+    totalShops: search.trim() ? allShops.length : nearbyShops.length,
+    allShops,
     loading,
     error,
-    isNearby,
-    usedRadius,     // ← new
+    isNearby: isNearby && !search.trim(), // ← hide "nearby" badge when searching
+    usedRadius,
     search, setSearch,
     category, setCategory,
     sortBy, setSortBy,

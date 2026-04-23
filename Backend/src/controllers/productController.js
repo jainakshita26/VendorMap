@@ -33,7 +33,7 @@ const addProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
-    const { name, price, description, unit, discountPrice } = req.body;
+    const { name, price, description, unit, discountPrice,available } = req.body;
 
     const updates = {
       name,
@@ -41,6 +41,7 @@ const updateProduct = async (req, res) => {
       discountPrice: discountPrice && Number(discountPrice) > 0 ? Number(discountPrice) : null,
       unit:          unit || "piece",
       description,
+      available:     available === "true" ? true : available === "false" ? false : true,
     };
 
     if (req.file) updates.image = req.file.path;

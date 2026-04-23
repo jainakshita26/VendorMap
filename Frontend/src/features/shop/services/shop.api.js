@@ -80,3 +80,8 @@ export const updateHours = async (hours) => {
   const res = await axiosInstance.put("/shops/hours", { hours });
   return res.data;
 };
+
+export const getAnalytics = async () => {
+  const res = await axiosInstance.get("/shops/analytics");
+  return res.data;
+};

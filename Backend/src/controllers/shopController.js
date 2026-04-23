@@ -1,4 +1,6 @@
 const shopModel = require("../models/shop.model");
+const ShopView     = require("../models/shopView.model"); 
+const productModel = require("../models/product.model");
 
 
 
@@ -53,28 +55,32 @@ const getAllShops = async (req, res) => {
 };
 
 
-// Get Shop By ID
+// Get Shop By ID — now tracks views
 const getShopById = async (req, res) => {
   try {
-
-    const shop = await shopModel.findById(req.params.id).populate("owner", "name email");
+    const shop = await shopModel.findById(req.params.id)
+      .populate("owner", "name email");
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
 
-    res.status(200).json({
-      shop
-    });
+    // track view — fire and forget, don't block response
+    const now = new Date();
+    ShopView.create({
+      shop:      shop._id,
+      viewedAt:  now,
+      hour:      now.getHours(),
+      dayOfWeek: now.getDay(),
+    }).catch(() => {}); // silent fail — view tracking never breaks the page
 
+    // increment simple counter too
+    shopModel.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } })
+      .catch(() => {});
+
+    res.status(200).json({ shop });
   } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -293,6 +299,90 @@ const updateHours = async (req, res) => {
   }
 };
 
+// GET /api/shops/analytics
+const getAnalytics = async (req, res) => {
+  try {
+    const shop = await shopModel.findOne({ owner: req.user.id });
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const shopId = shop._id;
+    const now    = new Date();
+    const days7  = new Date(now - 7 * 24 * 60 * 60 * 1000);  // 7 days ago
+    const days30 = new Date(now - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+
+    // ── 1. Total views (all time)
+    const totalViews = await ShopView.countDocuments({ shop: shopId });
+
+    // ── 2. Views last 7 days — grouped by date for line chart
+    const viewsByDay = await ShopView.aggregate([
+      { $match: { shop: shopId, viewedAt: { $gte: days7 } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$viewedAt" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // fill missing days with 0
+    const viewsByDayFilled = [];
+    for (let i = 6; i >= 0; i--) {
+      const d     = new Date(now - i * 24 * 60 * 60 * 1000);
+      const label = d.toISOString().split("T")[0];
+      const found = viewsByDay.find((v) => v._id === label);
+      viewsByDayFilled.push({
+        date:  label,
+        label: d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" }),
+        views: found ? found.count : 0,
+      });
+    }
+
+    // ── 3. Peak hours — grouped by hour for bar chart
+    const peakHours = await ShopView.aggregate([
+      { $match: { shop: shopId, viewedAt: { $gte: days30 } } },
+      { $group: { _id: "$hour", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // fill all 24 hours with 0
+    const peakHoursFilled = Array.from({ length: 24 }, (_, h) => {
+      const found = peakHours.find((p) => p._id === h);
+      const label = h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`;
+      return { hour: h, label, views: found ? found.count : 0 };
+    });
+
+    // ── 4. Products count
+    const totalProducts = await productModel.countDocuments({ shop: shopId });
+
+    // ── 5. Views last 7 days total
+    const weekViews = await ShopView.countDocuments({
+      shop: shopId, viewedAt: { $gte: days7 }
+    });
+
+    // ── 6. Views last 30 days total
+    const monthViews = await ShopView.countDocuments({
+      shop: shopId, viewedAt: { $gte: days30 }
+    });
+
+    res.json({
+      totalViews,
+      weekViews,
+      monthViews,
+      totalProducts,
+      averageRating: shop.averageRating,
+      reviewCount:   shop.reviewCount,
+      viewsByDay:    viewsByDayFilled,
+      peakHours:     peakHoursFilled,
+    });
+  } catch (err) {
+    console.log("getAnalytics ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 
 // add to exports
 module.exports = {
@@ -304,7 +394,8 @@ module.exports = {
   getNearbyShops,
   updateShop ,
   toggleTemporaryClosed ,
-  updateHours
+  updateHours,
+  getAnalytics
 };
 
 

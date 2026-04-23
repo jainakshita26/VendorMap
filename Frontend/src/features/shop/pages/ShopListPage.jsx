@@ -19,6 +19,7 @@ const ShopListPage = () => {
   const {
     shops,
     totalShops,
+    allShops,       // ← add this
     loading,
     error,
     isNearby,
@@ -32,7 +33,7 @@ const ShopListPage = () => {
     categories,
   } = useShops();
 
-  const { handleToggle, isFavourite } = useFavourites(); // ✅ already imported
+  const { handleToggle, isFavourite } = useFavourites();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -43,17 +44,30 @@ const ShopListPage = () => {
 
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-gray-800">
-              {isNearby ? "Shops Near You" : "All Shops"}
+              {search.trim()
+                ? "Search Results"
+                : isNearby ? "Shops Near You" : "All Shops"}
             </h1>
-            {isNearby && usedRadius && (
+
+            {/* radius badge — hidden while searching */}
+            {isNearby && usedRadius && !search.trim() && (
               <span className="text-xs bg-green-50 text-green-600 font-medium px-2 py-1 rounded-full border border-green-200">
                 📍 Within {usedRadius}km
+              </span>
+            )}
+
+            {/* searching all shops badge */}
+            {search.trim() && (
+              <span className="text-xs bg-blue-50 text-blue-600 font-medium px-2 py-1 rounded-full border border-blue-200">
+                🔍 Searching all shops
               </span>
             )}
           </div>
 
           <p className="text-sm text-gray-500 mb-6">
-            {isNearby
+            {search.trim()
+              ? `Showing results from all ${allShops?.length || ""} shops`
+              : isNearby
               ? `Showing shops within ${usedRadius}km of your location`
               : "Showing all shops — allow location for nearby results"}
           </p>
@@ -188,8 +202,8 @@ const ShopListPage = () => {
               <ShopCard
                 key={shop._id}
                 shop={shop}
-                isFavourite={isFavourite(shop._id)}       
-                onToggleFavourite={handleToggle}           
+                isFavourite={isFavourite(shop._id)}
+                onToggleFavourite={handleToggle}
               />
             ))}
           </div>

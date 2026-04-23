@@ -7,6 +7,7 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing]         = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [loading, setLoading]             = useState(false);
+  const [availLoading, setAvailLoading]   = useState(false); // ← new
   const [error, setError]                 = useState(null);
   const [aiLoading, setAiLoading]         = useState(false);
   const [aiError, setAiError]             = useState(null);
@@ -51,12 +52,30 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
     }
   };
 
+  // ── Toggle availability ────────────────────────────────────
+  const handleToggleAvailability = async () => {
+    setAvailLoading(true);
+    try {
+      const data = new FormData();
+      data.append("name",          product.name);
+      data.append("price",         product.price);
+      data.append("discountPrice", product.discountPrice || "");
+      data.append("unit",          product.unit || "piece");
+      data.append("description",   product.description || "");
+      data.append("available",     product.available === false ? "true" : "false");
+      await onUpdate(product._id, data);
+    } catch (err) {
+      setError("Failed to update availability");
+    } finally {
+      setAvailLoading(false);
+    }
+  };
+
   // ── Update ─────────────────────────────────────────────────
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError(null);
 
-    // validate discount < price
     if (formData.discountPrice && Number(formData.discountPrice) >= Number(formData.price)) {
       setError("Discount price must be less than original price");
       return;
@@ -103,8 +122,12 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
       ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
       : 0;
 
+    const isAvailable = product.available !== false;
+
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
+        isAvailable ? "border-gray-100" : "border-red-100 opacity-75"
+      }`}>
 
         {/* Image */}
         <div className="w-full h-36 bg-gray-100 overflow-hidden relative">
@@ -120,6 +143,14 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
               {discountPercent}% OFF
             </div>
           )}
+          {/* availability badge on image */}
+          <div className={`absolute top-2 right-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
+            isAvailable
+              ? "bg-green-500 text-white"
+              : "bg-gray-700 text-white"
+          }`}>
+            {isAvailable ? "Available" : "Unavailable"}
+          </div>
         </div>
 
         {/* Info */}
@@ -128,8 +159,6 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
           {product.description && (
             <p className="text-xs text-gray-500 line-clamp-2">{product.description}</p>
           )}
-
-          {/* Price */}
           <div className="flex items-center gap-2 pt-1">
             {hasDiscount ? (
               <>
@@ -146,20 +175,40 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
         </div>
 
         {/* Actions */}
-        <div className="px-4 pb-4 flex gap-2">
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg transition"
-          >
-            ✏️ Edit
-          </button>
+        <div className="px-4 pb-4 space-y-2">
+
+          {/* Row 1 — availability + edit */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleToggleAvailability}
+              disabled={availLoading}
+              className={`flex-1 text-xs font-medium py-2 rounded-lg transition disabled:opacity-50 ${
+                isAvailable
+                  ? "bg-orange-50 hover:bg-orange-100 text-orange-600"
+                  : "bg-green-50 hover:bg-green-100 text-green-600"
+              }`}
+            >
+              {availLoading
+                ? "..."
+                : isAvailable ? "Mark Unavailable" : "Mark Available"
+              }
+            </button>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg transition"
+            >
+              ✏️ Edit
+            </button>
+          </div>
+
+          {/* Row 2 — delete */}
           {deleteConfirm ? (
-            <div className="flex-1 flex gap-1">
+            <div className="flex gap-1">
               <button
                 onClick={handleDelete} disabled={loading}
                 className="flex-1 text-xs font-medium bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg transition"
               >
-                {loading ? "..." : "Confirm"}
+                {loading ? "..." : "Confirm Delete"}
               </button>
               <button
                 onClick={() => setDeleteConfirm(false)}
@@ -171,7 +220,7 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
           ) : (
             <button
               onClick={() => setDeleteConfirm(true)}
-              className="flex-1 text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg transition"
+              className="w-full text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg transition"
             >
               🗑️ Delete
             </button>
@@ -196,14 +245,12 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
 
       <form onSubmit={handleUpdate} className="space-y-3">
 
-        {/* Name */}
         <input
           type="text" name="name" value={formData.name}
           onChange={handleChange} required placeholder="Product name"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
         />
 
-        {/* Price + Unit */}
         <div className="flex gap-2">
           <input
             type="number" name="price" value={formData.price}
@@ -220,14 +267,12 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
           </select>
         </div>
 
-        {/* Discount price */}
         <div>
           <input
             type="number" name="discountPrice" value={formData.discountPrice}
             onChange={handleChange} min="0" placeholder="Discount price (optional)"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
           />
-          {/* Live preview */}
           {formData.discountPrice && formData.price &&
            Number(formData.discountPrice) < Number(formData.price) && (
             <div className="mt-1 flex items-center gap-2 text-xs">
@@ -246,7 +291,6 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
           )}
         </div>
 
-        {/* Image upload */}
         <div>
           <div
             onClick={() => fileInputRef.current.click()}
@@ -274,7 +318,6 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
             onChange={handleImageChange} className="hidden" />
         </div>
 
-        {/* Description + AI */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-gray-500">Description</span>
@@ -298,7 +341,6 @@ const VendorProductCard = ({ product, onUpdate, onDelete }) => {
           />
         </div>
 
-        {/* Buttons */}
         <div className="flex gap-2 pt-1">
           <button
             type="submit" disabled={loading}

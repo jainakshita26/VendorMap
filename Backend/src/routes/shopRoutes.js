@@ -7,7 +7,7 @@ const {
   getShopById,
   getMyShop,
   getNearbyShops,
-  updateShop,toggleTemporaryClosed,updateHours
+  updateShop,toggleTemporaryClosed,updateHours,getAnalytics
 } = require("../controllers/shopController");
 
 const authMiddleware=require('../middlewares/auth.middleware')
@@ -24,18 +24,20 @@ router.put("/update", authMiddleware, vendorMiddleware, upload.single("shopImage
 router.get("/", getAllShops);
 router.get("/nearby",    getNearbyShops);
 router.get("/my-shop", authMiddleware, vendorMiddleware, getMyShop);
+router.get("/analytics", authMiddleware, vendorMiddleware, getAnalytics);
 
 
 
 
-// Get shop by ID
-router.get("/:id", getShopById);
+
 
 router.post("/create", authMiddleware, vendorMiddleware, upload.single("shopImage"), createShop);
 router.put("/update", authMiddleware, vendorMiddleware, upload.single("shopImage"), updateShop);
 router.put("/hours", authMiddleware, vendorMiddleware, updateHours);
 router.put("/toggle-closed", authMiddleware, vendorMiddleware, toggleTemporaryClosed);
 
+// Get shop by ID
+router.get("/:id", getShopById);
 
 
 

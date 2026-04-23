@@ -15,6 +15,7 @@ const productRoutes = require('./routes/productRoutes');
 const reviewRoutes=require('./routes/reviewRoutes')
 const favouriteRoutes=require('./routes/favouriteRoutes')
 const aiRoutes=require('./routes/aiRoutes')
+require("./models/shopView.model");
 const app = express();
 
 app.use(cors({
