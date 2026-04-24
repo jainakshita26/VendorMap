@@ -1,8 +1,8 @@
-// src/features/vendor/components/EditShopForm.jsx
 import { useState, useRef } from "react";
 
 const EditShopForm = ({ shop, onSubmit, onClose }) => {
   const [description, setDescription] = useState(shop.description || "");
+  const [phone, setPhone]             = useState(shop.phone || ""); // ← add
   const [imageFile, setImageFile]     = useState(null);
   const [preview, setPreview]         = useState(shop.shopImage || null);
   const [loading, setLoading]         = useState(false);
@@ -25,6 +25,7 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
     try {
       const formData = new FormData();
       formData.append("description", description);
+      formData.append("phone",       phone);        // ← add
       if (imageFile) formData.append("shopImage", imageFile);
 
       await onSubmit(formData);
@@ -40,12 +41,9 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
   return (
     <div className="bg-white rounded-2xl border border-blue-200 shadow-sm p-6">
 
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold text-gray-800">Edit Shop Profile</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl transition">
-          ✕
-        </button>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl transition">✕</button>
       </div>
 
       {error && (
@@ -61,13 +59,9 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* Image upload */}
+        {/* Image */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Shop Image
-          </label>
-
-          {/* Clickable preview box */}
+          <label className="block text-sm font-medium text-gray-700 mb-2">Shop Image</label>
           <div
             onClick={() => fileInputRef.current.click()}
             className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-400 transition flex items-center justify-center bg-gray-50"
@@ -81,34 +75,40 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
               </div>
             )}
           </div>
-
           {imageFile && (
             <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
               <span className="truncate max-w-xs">{imageFile.name}</span>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current.click()}
-                className="text-blue-600 underline ml-2 shrink-0"
-              >
-                Change
-              </button>
+              <button type="button" onClick={() => fileInputRef.current.click()}
+                className="text-blue-600 underline ml-2 shrink-0">Change</button>
             </div>
           )}
+          <input ref={fileInputRef} type="file" accept="image/*"
+            onChange={handleImageChange} className="hidden" />
+        </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="hidden"
-          />
+        {/* Phone number ── */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Phone Number
+            <span className="text-gray-400 font-normal ml-1">(optional)</span>
+          </label>
+          <div className="flex">
+            <span className="inline-flex items-center px-3 bg-gray-50 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
+              +91
+            </span>
+            <input
+              type="tel" value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="9876543210"
+              maxLength={10}
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+          </div>
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -116,23 +116,16 @@ const EditShopForm = ({ shop, onSubmit, onClose }) => {
             placeholder="Tell customers what your shop is about..."
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
           />
-          <p className="text-xs text-gray-400 mt-1 text-right">
-            {description.length} characters
-          </p>
+          <p className="text-xs text-gray-400 mt-1 text-right">{description.length} characters</p>
         </div>
 
-        {/* Buttons */}
         <div className="flex gap-2 pt-1">
-          <button
-            type="submit" disabled={loading}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2.5 rounded-lg text-sm transition"
-          >
+          <button type="submit" disabled={loading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2.5 rounded-lg text-sm transition">
             {loading ? "Saving..." : "Save Changes"}
           </button>
-          <button
-            type="button" onClick={onClose}
-            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-lg text-sm transition"
-          >
+          <button type="button" onClick={onClose}
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-lg text-sm transition">
             Cancel
           </button>
         </div>

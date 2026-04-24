@@ -215,26 +215,20 @@ const getNearbyShops = async (req, res) => {
 // POST /api/shops/create
 const createShop = async (req, res) => {
   try {
-    console.log("createShop hit");
-    console.log("req.user:", req.user);
-    console.log("body:", req.body);
-
-    const { shopName, category, description } = req.body;
+    const { shopName, category, description, phone } = req.body; // ← add phone
     const shopImage = req.file ? req.file.path : "";
     const location  = req.body.location ? JSON.parse(req.body.location) : undefined;
-
-    console.log("owner being set to:", req.user._id || req.user.id);
 
     const shop = await shopModel.create({
       shopName,
       category,
       description,
+      phone: phone || "",  // ← add
       shopImage,
       location,
-      owner: req.user._id || req.user.id, // ← try both
+      owner: req.user._id || req.user.id,
     });
 
-    console.log("shop created:", shop);
     res.status(201).json({ success: true, shop });
   } catch (err) {
     console.log("createShop ERROR:", err);
@@ -247,13 +241,12 @@ const updateShop = async (req, res) => {
   try {
     const updates = {};
 
-    if (req.body.description) updates.description = req.body.description;
-
-    // only update image if a new file was uploaded
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.phone !== undefined)       updates.phone       = req.body.phone; // ← add
     if (req.file) updates.shopImage = req.file.path;
 
     const shop = await shopModel.findOneAndUpdate(
-      { owner: req.user._id },
+      { owner: req.user._id || req.user.id },
       updates,
       { new: true }
     );
@@ -263,7 +256,6 @@ const updateShop = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 // PUT /api/shops/toggle-closed
 const toggleTemporaryClosed = async (req, res) => {
   try {

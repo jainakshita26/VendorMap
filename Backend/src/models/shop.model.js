@@ -18,10 +18,9 @@ const ShopSchema = new mongoose.Schema({
   category:      { type: String },
   shopImage:     { type: String },
   description:   { type: String },
+  phone:         { type: String, default: "" }, // ← add this
   averageRating: { type: Number, default: 0 },
   reviewCount:   { type: Number, default: 0 },
-
-  // ← new
   hours: {
     type: [hoursSchema],
     default: () => [

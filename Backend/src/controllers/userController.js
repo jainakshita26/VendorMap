@@ -33,7 +33,6 @@ const registerUser = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    // ← set cookie just like login does
     res.cookie("token", token, {
       httpOnly: true,
       secure:   false,
@@ -91,11 +90,13 @@ const loginUser = async (req, res) => {
       httpOnly: true,
       secure: false, // true in production (HTTPS)
       sameSite: "lax",
+      maxAge:   24 * 60 * 60 * 1000,
     });
+    const safeUser = await userModel.findById(user._id).select("-password");
 
     res.status(200).json({
       message: "Login successful",
-      user
+      user:safeUser
     });
 
   } catch (err) {
@@ -107,10 +108,14 @@ const loginUser = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
+
     const token = req.cookies.token;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token) {
+      return res.status(401).json({ message: "No token" });
+    }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await userModel.findById(decoded.id).select("-password");
 
     res.json({ user });

@@ -101,11 +101,10 @@ const ShopDetailPage = () => {
                 {isAuthenticated && isCustomer && (
                   <button
                     onClick={() => handleToggle(id)}
-                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${
-                      isFavourite(id)
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition ${isFavourite(id)
                         ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
                         : "bg-gray-50 text-gray-500 border-gray-200 hover:border-red-300 hover:text-red-400"
-                    }`}
+                      }`}
                   >
                     <span>{isFavourite(id) ? "♥" : "♡"}</span>
                     <span>{isFavourite(id) ? "Saved" : "Save Shop"}</span>
@@ -140,6 +139,21 @@ const ShopDetailPage = () => {
                   <span>👤</span>{shop?.owner?.name}
                 </span>
               </div>
+              {/* ← add contact buttons here */}
+              {shop?.phone && (
+                <div className="flex items-center gap-2 pt-2">
+                  <a href={`tel:+91${shop.phone}`}
+                    className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition">
+                    📞 Call Shop
+                  </a>
+                  <a href={`https://wa.me/91${shop.phone}?text=Hi, I found your shop on VendorMap!`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] text-white transition">
+                    💬 WhatsApp
+                  </a>
+                </div>
+              )}
+
             </div>
           )}
         </div>

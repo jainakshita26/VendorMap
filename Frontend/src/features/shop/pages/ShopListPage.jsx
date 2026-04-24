@@ -19,7 +19,8 @@ const ShopListPage = () => {
   const {
     shops,
     totalShops,
-    allShops,       // ← add this
+    allShops,
+    userCoords,  // ← add
     loading,
     error,
     isNearby,
@@ -49,14 +50,12 @@ const ShopListPage = () => {
                 : isNearby ? "Shops Near You" : "All Shops"}
             </h1>
 
-            {/* radius badge — hidden while searching */}
             {isNearby && usedRadius && !search.trim() && (
               <span className="text-xs bg-green-50 text-green-600 font-medium px-2 py-1 rounded-full border border-green-200">
                 📍 Within {usedRadius}km
               </span>
             )}
 
-            {/* searching all shops badge */}
             {search.trim() && (
               <span className="text-xs bg-blue-50 text-blue-600 font-medium px-2 py-1 rounded-full border border-blue-200">
                 🔍 Searching all shops
@@ -101,8 +100,6 @@ const ShopListPage = () => {
 
         {/* ── Filter Bar ──────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-
-          {/* Category pills */}
           <div className="flex items-center gap-2 flex-wrap">
             {loading ? (
               <div className="flex gap-2">
@@ -127,7 +124,6 @@ const ShopListPage = () => {
             )}
           </div>
 
-          {/* Sort dropdown */}
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -137,7 +133,6 @@ const ShopListPage = () => {
             <option value="name">Sort: A → Z</option>
             <option value="newest">Sort: Newest</option>
           </select>
-
         </div>
 
         {/* ── Results count ───────────────────────────────── */}
@@ -204,6 +199,8 @@ const ShopListPage = () => {
                 shop={shop}
                 isFavourite={isFavourite(shop._id)}
                 onToggleFavourite={handleToggle}
+                userCoords={userCoords}       // ← add
+                isSearching={!!search.trim()} // ← add
               />
             ))}
           </div>

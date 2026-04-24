@@ -1,4 +1,3 @@
-// src/features/vendor/components/CreateShopForm.jsx
 import { useState, useRef } from "react";
 import { getCurrentCoordinates, buildLocation, geocodeAddress } from "../../../core/utils/location";
 import useAuth from "../../auth/hooks/useAuth";
@@ -14,14 +13,15 @@ const CreateShopForm = ({ onSubmit }) => {
   const fileInputRef = useRef();
 
   const [formData, setFormData] = useState({
-    shopName: "",
-    location: user?.location?.address || "",
-    category: "",
+    shopName:    "",
+    location:    user?.location?.address || "",
+    category:    "",
     description: "",
+    phone:       "", // ← add
   });
 
-  const [imageFile, setImageFile] = useState(null);   // actual file
-  const [preview, setPreview]     = useState(null);   // blob URL for preview
+  const [imageFile, setImageFile] = useState(null);
+  const [preview, setPreview]     = useState(null);
   const [error, setError]         = useState(null);
   const [loading, setLoading]     = useState(false);
 
@@ -33,7 +33,7 @@ const CreateShopForm = ({ onSubmit }) => {
     const file = e.target.files[0];
     if (!file) return;
     setImageFile(file);
-    setPreview(URL.createObjectURL(file)); // instant preview, no upload yet
+    setPreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
@@ -45,16 +45,13 @@ const CreateShopForm = ({ onSubmit }) => {
       let locationData = null;
 
       try {
-        // Step 1 — GPS
         const { coordinates } = await getCurrentCoordinates();
         locationData = buildLocation(coordinates, formData.location);
       } catch {
-        // Step 2 — Geocoding
         const geocoded = await geocodeAddress(formData.location);
         if (geocoded) {
           locationData = buildLocation(geocoded.coordinates, formData.location);
         } else {
-          // Step 3 — fallback
           locationData = buildLocation(
             user?.location?.coordinates || [0, 0],
             formData.location
@@ -62,16 +59,15 @@ const CreateShopForm = ({ onSubmit }) => {
         }
       }
 
-      // Build FormData instead of plain object
       const data = new FormData();
-      data.append("shopName", formData.shopName);
-      data.append("category", formData.category);
+      data.append("shopName",    formData.shopName);
+      data.append("category",    formData.category);
       data.append("description", formData.description);
-      data.append("location", JSON.stringify(locationData)); // location as JSON string
-      if (imageFile) data.append("shopImage", imageFile);   // only if file chosen
+      data.append("phone",       formData.phone);       // ← add
+      data.append("location",    JSON.stringify(locationData));
+      if (imageFile) data.append("shopImage", imageFile);
 
-      await onSubmit(data); // hook receives FormData directly
-
+      await onSubmit(data);
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to create shop.");
     } finally {
@@ -134,23 +130,41 @@ const CreateShopForm = ({ onSubmit }) => {
             />
           </div>
 
-          {/* ---- Image upload (replaces URL input) ---- */}
+          {/* ── Phone number ── */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number
+              <span className="text-gray-400 font-normal ml-1">(optional)</span>
+            </label>
+            <div className="flex">
+              <span className="inline-flex items-center px-3 bg-gray-50 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
+                +91
+              </span>
+              <input
+                type="tel" name="phone" value={formData.phone}
+                onChange={handleChange}
+                placeholder="9876543210"
+                maxLength={10}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Customers will see a "Call Shop" button on your shop page
+            </p>
+          </div>
+
+          {/* Image upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Shop Image
               <span className="text-gray-400 font-normal ml-1">(optional)</span>
             </label>
-
-            {/* Clickable preview box */}
             <div
               onClick={() => fileInputRef.current.click()}
               className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:border-blue-400 transition flex items-center justify-center bg-gray-50"
             >
               {preview ? (
-                <img
-                  src={preview} alt="Shop preview"
-                  className="w-full h-full object-cover"
-                />
+                <img src={preview} alt="Shop preview" className="w-full h-full object-cover" />
               ) : (
                 <div className="text-center text-gray-400">
                   <div className="text-3xl mb-1">📷</div>
@@ -158,29 +172,17 @@ const CreateShopForm = ({ onSubmit }) => {
                 </div>
               )}
             </div>
-
-            {/* Show filename + change option after picking */}
             {imageFile && (
               <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                 <span className="truncate max-w-xs">{imageFile.name}</span>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current.click()}
-                  className="text-blue-600 underline ml-2 shrink-0"
-                >
+                <button type="button" onClick={() => fileInputRef.current.click()}
+                  className="text-blue-600 underline ml-2 shrink-0">
                   Change
                 </button>
               </div>
             )}
-
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept="image/*"
+              onChange={handleImageChange} className="hidden" />
           </div>
 
           <div>

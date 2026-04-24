@@ -3,12 +3,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { getAllShops, getNearbyShops } from "../services/shop.api";
 
 const useShops = () => {
-  const [nearbyShops, setNearbyShops] = useState([]); // ← nearby only
-  const [allShops, setAllShops]       = useState([]); // ← all shops for search
+  const [nearbyShops, setNearbyShops] = useState([]);
+  const [allShops, setAllShops]       = useState([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [isNearby, setIsNearby]       = useState(false);
   const [usedRadius, setUsedRadius]   = useState(null);
+  const [userCoords, setUserCoords]   = useState(null); // ← new
 
   const [search, setSearch]     = useState("");
   const [category, setCategory] = useState("All");
@@ -23,7 +24,7 @@ const useShops = () => {
     const fetchAllShops = async () => {
       try {
         const data = await getAllShops();
-        setAllShops(data.shops);   // ← always store all shops
+        setAllShops(data.shops);
         setNearbyShops(data.shops);
         setIsNearby(false);
         setUsedRadius(null);
@@ -35,14 +36,14 @@ const useShops = () => {
     };
 
     const fetchNearbyShops = async (lat, lng) => {
+      setUserCoords({ lat, lng }); // ← save user coords
       try {
         const [nearbyData, allData] = await Promise.all([
-          getNearbyShops(lat, lng), // ← fetch nearby
-          getAllShops(),             // ← fetch all at same time
+          getNearbyShops(lat, lng),
+          getAllShops(),
         ]);
-
         setNearbyShops(nearbyData.shops);
-        setAllShops(allData.shops);  // ← store all for search
+        setAllShops(allData.shops);
         setUsedRadius(nearbyData.usedRadius);
         setIsNearby(nearbyData.usedRadius !== null);
       } catch {
@@ -64,11 +65,6 @@ const useShops = () => {
   }, []);
 
   const filteredShops = useMemo(() => {
-    /*
-      Key logic:
-      - If search is active → search across ALL shops (ignore radius)
-      - If no search → show nearby shops only
-    */
     const base = search.trim() ? allShops : nearbyShops;
 
     let result = [...base];
@@ -96,7 +92,6 @@ const useShops = () => {
     return result;
   }, [nearbyShops, allShops, search, category, sortBy]);
 
-  // categories from all shops so filters always show everything
   const categories = useMemo(() => {
     const cats = [...new Set(allShops.map((s) => s.category).filter(Boolean))];
     return ["All", ...cats];
@@ -106,9 +101,10 @@ const useShops = () => {
     shops: filteredShops,
     totalShops: search.trim() ? allShops.length : nearbyShops.length,
     allShops,
+    userCoords,  // ← new
     loading,
     error,
-    isNearby: isNearby && !search.trim(), // ← hide "nearby" badge when searching
+    isNearby: isNearby && !search.trim(),
     usedRadius,
     search, setSearch,
     category, setCategory,

@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children, vendorOnly = false }) => {
 
   // Not logged in → send to login
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace />;          //replace means back button won’t go back to protected page
   }
 
   // Logged in but not a vendor → send to home

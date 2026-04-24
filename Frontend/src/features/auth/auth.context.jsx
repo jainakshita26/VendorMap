@@ -5,18 +5,19 @@ import { getMe, loginUser, registerUser, logoutUser } from "./services/auth.api"
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser]       = useState(null);   // logged-in user object or null
+  const [user, setUser] = useState(null);   // logged-in user object or null
   const [loading, setLoading] = useState(true);   // true while getMe is running on load
 
   // ── Runs once on app load 
   // Silently checks if a valid JWT cookie exists and restores the session
   useEffect(() => {
-    const restoreSession = async () => {
+    const restoreSession = async () => {  //restoreSession is used if user reload still remain login 
       try {
         const data = await getMe();
         setUser(data.user);   // ← adjust "data.user" to match your backend response shape
-      } catch {
-        setUser(null);        // cookie missing or expired — treat as logged out
+      } catch (err) {
+        console.error("Session restore failed", err);
+        setUser(null);       // cookie missing or expired — treat as logged out
       } finally {
         setLoading(false);
       }
@@ -47,8 +48,8 @@ export const AuthProvider = ({ children }) => {
   // ── Derived helpers 
 
   const isAuthenticated = !!user;
-  const isVendor        = user?.role === "vendor";
-  const isCustomer      = user?.role === "customer";
+  const isVendor = user?.role === "vendor";
+  const isCustomer = user?.role === "customer";
 
   return (
     <AuthContext.Provider

@@ -1,8 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../auth/hooks/useAuth";
-import { getShopStatus } from "../../../core/utils/shopHours"; // ← new
+import { getShopStatus } from "../../../core/utils/shopHours";
 
-const ShopCard = ({ shop, isFavourite = false, onToggleFavourite }) => {
+// haversine distance calculation
+const getDistanceKm = (lat1, lng1, lat2, lng2) => {
+  const R    = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a    =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const ShopCard = ({ shop, isFavourite = false, onToggleFavourite, userCoords, isSearching }) => {
   const navigate = useNavigate();
   const { isAuthenticated, isCustomer } = useAuth();
 
@@ -11,8 +25,19 @@ const ShopCard = ({ shop, isFavourite = false, onToggleFavourite }) => {
     if (onToggleFavourite) onToggleFavourite(shop._id);
   };
 
-  // ← new
-const { isOpen, label } = getShopStatus(shop.hours, shop.temporarilyClosed);
+  const { isOpen, label } = getShopStatus(shop.hours, shop.temporarilyClosed);
+
+  // calculate distance only when searching + user coords available
+  const distance = (() => {
+    if (!isSearching || !userCoords) return null;
+    const coords = shop.location?.coordinates;
+    if (!coords || (coords[0] === 0 && coords[1] === 0)) return null;
+    const [shopLng, shopLat] = coords;
+    const km = getDistanceKm(userCoords.lat, userCoords.lng, shopLat, shopLng);
+    return km < 1
+      ? `${Math.round(km * 1000)} m away`
+      : `${km.toFixed(1)} km away`;
+  })();
 
   return (
     <div
@@ -32,8 +57,8 @@ const { isOpen, label } = getShopStatus(shop.hours, shop.temporarilyClosed);
           </div>
         )}
 
-        {/* ← Open/Closed badge */}
-        {shop.hours?.length > 0 && (
+        {/* Open/Closed badge */}
+        {shop.hours?.length > 0 && isOpen !== null && (
           <div className={`absolute top-3 left-3 text-xs font-semibold px-2 py-1 rounded-full ${
             isOpen
               ? "bg-green-500 text-white"
@@ -77,7 +102,16 @@ const { isOpen, label } = getShopStatus(shop.hours, shop.temporarilyClosed);
                 <span>{shop.location.address}</span>
               </div>
             )}
-            {/* ← Hours label */}
+
+            {/* ← distance badge — only shows when searching */}
+            {distance && (
+              <div className="flex items-center gap-1 text-xs font-medium text-blue-500">
+                <span>📏</span>
+                <span>{distance}</span>
+              </div>
+            )}
+
+            {/* Hours label */}
             {shop.hours?.length > 0 && label && (
               <span className={`text-xs ${isOpen ? "text-green-600" : "text-gray-400"}`}>
                 {label}
